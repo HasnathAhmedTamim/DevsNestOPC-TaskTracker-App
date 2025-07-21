@@ -24,15 +24,29 @@ let client;
 let tasksCollection;
 let usersCollection;
 
+console.log('🔍 Environment check:', {
+  hasMongoUri: !!process.env.MONGO_URI,
+  hasJwtSecret: !!process.env.JWT_SECRET,
+  nodeEnv: process.env.NODE_ENV
+});
+
+// Global connection state for serverless
+let isConnected = false;
+
 // Connect to MongoDB and keep connection open
 async function connectDB() {
+  if (isConnected && client) {
+    return;
+  }
+
   try {
     if (!uri || uri.includes('<db_username>')) {
-      console.log('⚠️  MongoDB URI not configured. Please update MONGO_URI in .env file with your Atlas credentials.');
+      console.log('⚠️  MongoDB URI not configured. Available env vars:', Object.keys(process.env).filter(key => key.includes('MONGO')));
       console.log('💡 Server will run without MongoDB connection for now.');
       return;
     }
     
+    console.log('🔗 Attempting to connect to MongoDB...');
     client = new MongoClient(uri, {
       serverApi: {
         version: ServerApiVersion.v1,
@@ -42,6 +56,7 @@ async function connectDB() {
     });
     
     await client.connect();
+    isConnected = true;
     console.log('✅ Connected to MongoDB Atlas');
     const db = client.db('tasktracker');
     tasksCollection = db.collection('tasks');
@@ -53,6 +68,14 @@ async function connectDB() {
 }
 
 connectDB();
+
+// Middleware to ensure database connection for each request
+const ensureDBConnection = async (req, res, next) => {
+  if (!tasksCollection || !usersCollection) {
+    await connectDB();
+  }
+  next();
+};
 
 // Authentication middleware
 const authenticateToken = (req, res, next) => {
@@ -91,7 +114,7 @@ app.get('/', (req, res) => {
 });
 
 // User Registration
-app.post('/api/register', async (req, res) => {
+app.post('/api/register', ensureDBConnection, async (req, res) => {
   try {
     if (!usersCollection) {
       return res.status(503).json({ message: 'Database not connected. Please configure MongoDB URI.' });
@@ -136,7 +159,7 @@ app.post('/api/register', async (req, res) => {
 });
 
 // User Login
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', ensureDBConnection, async (req, res) => {
   try {
     if (!usersCollection) {
       return res.status(503).json({ message: 'Database not connected. Please configure MongoDB URI.' });
@@ -174,7 +197,7 @@ app.post('/api/login', async (req, res) => {
 });
 
 // Get all tasks (user-specific)
-app.get('/api/tasks', authenticateToken, async (req, res) => {
+app.get('/api/tasks', authenticateToken, ensureDBConnection, async (req, res) => {
   try {
     if (!tasksCollection) {
       return res.status(503).json({ message: 'Database not connected. Please configure MongoDB URI.' });
@@ -187,7 +210,7 @@ app.get('/api/tasks', authenticateToken, async (req, res) => {
 });
 
 // Create a new task
-app.post('/api/tasks', authenticateToken, async (req, res) => {
+app.post('/api/tasks', authenticateToken, ensureDBConnection, async (req, res) => {
   try {
     if (!tasksCollection) {
       return res.status(503).json({ message: 'Database not connected. Please configure MongoDB URI.' });
@@ -205,7 +228,7 @@ app.post('/api/tasks', authenticateToken, async (req, res) => {
 });
 
 // Update a task by ID
-app.put('/api/tasks/:id', authenticateToken, async (req, res) => {
+app.put('/api/tasks/:id', authenticateToken, ensureDBConnection, async (req, res) => {
   const id = req.params.id;
   const updatedData = req.body;
 
@@ -232,7 +255,7 @@ app.put('/api/tasks/:id', authenticateToken, async (req, res) => {
 });
 
 // Delete a task by ID
-app.delete('/api/tasks/:id', authenticateToken, async (req, res) => {
+app.delete('/api/tasks/:id', authenticateToken, ensureDBConnection, async (req, res) => {
   const id = req.params.id;
 
   try {
@@ -256,7 +279,12 @@ app.get('/api/health', (req, res) => {
   res.json({ 
     message: 'Task Tracker API is running!', 
     timestamp: new Date().toISOString(),
-    mongodb: tasksCollection ? 'Connected' : 'Not configured'
+    mongodb: tasksCollection ? 'Connected' : 'Not configured',
+    environment: {
+      hasMongoUri: !!process.env.MONGO_URI,
+      hasJwtSecret: !!process.env.JWT_SECRET,
+      nodeEnv: process.env.NODE_ENV
+    }
   });
 });
 
