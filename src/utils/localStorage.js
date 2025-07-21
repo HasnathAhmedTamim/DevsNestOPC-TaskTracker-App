@@ -1,16 +1,18 @@
 // localStorage utility functions for task management
 
-export const saveTasks = (tasks) => {
+export const saveTasks = (tasks, userEmail) => {
   try {
-    localStorage.setItem('tasks', JSON.stringify(tasks));
+    const key = userEmail ? `tasks_${userEmail}` : 'tasks';
+    localStorage.setItem(key, JSON.stringify(tasks));
   } catch (error) {
     console.error('Error saving tasks to localStorage:', error);
   }
 };
 
-export const getTasks = () => {
+export const getTasks = (userEmail) => {
   try {
-    const tasks = localStorage.getItem('tasks');
+    const key = userEmail ? `tasks_${userEmail}` : 'tasks';
+    const tasks = localStorage.getItem(key);
     return tasks ? JSON.parse(tasks) : [];
   } catch (error) {
     console.error('Error getting tasks from localStorage:', error);

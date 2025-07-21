@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/useAuth";
+import { useDispatch } from "react-redux";
+import { loadTasksForUser, clearTasks } from "../redux/taskSlice";
 import TaskForm from "../components/TaskForm";
 import TaskList from "../components/TaskList";
 import toast from "react-hot-toast";
@@ -7,8 +9,16 @@ import { Link } from "react-router-dom";
 
 const Tasks = () => {
   const { user, logout } = useAuth();
+  const dispatch = useDispatch();
   const [editingTask, setEditingTask] = useState(null);
   const [showForm, setShowForm] = useState(false);
+
+  // Load tasks for the current user
+  useEffect(() => {
+    if (user?.email) {
+      dispatch(loadTasksForUser(user.email));
+    }
+  }, [user?.email, dispatch]);
 
   const handleEditTask = (task) => {
     setEditingTask(task);
@@ -21,15 +31,16 @@ const Tasks = () => {
   };
 
   const handleLogout = () => {
+    dispatch(clearTasks());
     logout();
     toast.success("Logged out successfully!");
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#000435]">
       {/* Header */}
       <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ">
           <div className="flex justify-between items-center py-6">
             <Link to="/">
               <div>

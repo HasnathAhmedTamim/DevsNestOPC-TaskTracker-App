@@ -2,7 +2,8 @@ import { createSlice } from '@reduxjs/toolkit';
 import { getTasks, saveTasks } from '../utils/localStorage';
 
 const initialState = {
-  tasks: getTasks(),
+  tasks: [],
+  currentUserEmail: null,
   loading: false,
   error: null,
 };
@@ -11,6 +12,12 @@ const taskSlice = createSlice({
   name: 'tasks',
   initialState,
   reducers: {
+    loadTasksForUser: (state, action) => {
+      const userEmail = action.payload;
+      state.currentUserEmail = userEmail;
+      state.tasks = getTasks(userEmail);
+    },
+    
     addTask: (state, action) => {
       const newTask = {
         id: Date.now().toString(),
@@ -22,7 +29,7 @@ const taskSlice = createSlice({
         createdAt: new Date().toISOString(),
       };
       state.tasks.push(newTask);
-      saveTasks(state.tasks);
+      saveTasks(state.tasks, state.currentUserEmail);
     },
     
     updateTask: (state, action) => {
@@ -30,21 +37,26 @@ const taskSlice = createSlice({
       const taskIndex = state.tasks.findIndex(task => task.id === id);
       if (taskIndex !== -1) {
         state.tasks[taskIndex] = { ...state.tasks[taskIndex], ...updates };
-        saveTasks(state.tasks);
+        saveTasks(state.tasks, state.currentUserEmail);
       }
     },
     
     deleteTask: (state, action) => {
       state.tasks = state.tasks.filter(task => task.id !== action.payload);
-      saveTasks(state.tasks);
+      saveTasks(state.tasks, state.currentUserEmail);
     },
     
     toggleTaskStatus: (state, action) => {
       const task = state.tasks.find(task => task.id === action.payload);
       if (task) {
         task.status = task.status === 'Completed' ? 'Pending' : 'Completed';
-        saveTasks(state.tasks);
+        saveTasks(state.tasks, state.currentUserEmail);
       }
+    },
+    
+    clearTasks: (state) => {
+      state.tasks = [];
+      state.currentUserEmail = null;
     },
     
     setLoading: (state, action) => {
@@ -58,10 +70,12 @@ const taskSlice = createSlice({
 });
 
 export const {
+  loadTasksForUser,
   addTask,
   updateTask,
   deleteTask,
   toggleTaskStatus,
+  clearTasks,
   setLoading,
   setError,
 } = taskSlice.actions;
