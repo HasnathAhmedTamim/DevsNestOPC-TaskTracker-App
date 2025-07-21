@@ -1,3 +1,45 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* SweetAlert2 Custom Styles */
+.swal-popup {
+  border-radius: 12px !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+}
+
+.swal-title {
+  font-size: 1.5rem !important;
+  font-weight: 600 !important;
+  color: #1f2937 !important;
+}
+
+.swal-content {
+  font-size: 1rem !important;
+  color: #4b5563 !important;
+  line-height: 1.5 !important;
+}
+
+.swal-confirm-btn {
+  border-radius: 8px !important;
+  padding: 0.75rem 1.5rem !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.swal-confirm-btn:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 10px 25px -5px rgba(220, 38, 38, 0.4) !important;
+}
+
+.swal-cancel-btn {
+  border-radius: 8px !important;
+  padding: 0.75rem 1.5rem !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.swal-cancel-btn:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 10px 25px -5px rgba(107, 114, 128, 0.4) !important;
+}

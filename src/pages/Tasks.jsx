@@ -1,24 +1,28 @@
 import React, { useState, useEffect } from "react";
-import { useAuth } from "../context/useAuth";
-import { useDispatch } from "react-redux";
-import { loadTasksForUser, clearTasks } from "../redux/taskSlice";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchTasks, clearTasks } from "../redux/taskSlice";
 import TaskForm from "../components/TaskForm";
 import TaskList from "../components/TaskList";
 import toast from "react-hot-toast";
 import { Link } from "react-router-dom";
 
-const Tasks = () => {
-  const { user, logout } = useAuth();
+const Tasks = ({ user, onLogout }) => {
   const dispatch = useDispatch();
+  const { loading, error } = useSelector((state) => state.tasks);
   const [editingTask, setEditingTask] = useState(null);
   const [showForm, setShowForm] = useState(false);
 
-  // Load tasks for the current user
+  // Load tasks when component mounts
   useEffect(() => {
-    if (user?.email) {
-      dispatch(loadTasksForUser(user.email));
+    dispatch(fetchTasks());
+  }, [dispatch]);
+
+  // Show error toast if there's an error
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
     }
-  }, [user?.email, dispatch]);
+  }, [error]);
 
   const handleEditTask = (task) => {
     setEditingTask(task);
@@ -32,7 +36,7 @@ const Tasks = () => {
 
   const handleLogout = () => {
     dispatch(clearTasks());
-    logout();
+    onLogout();
     toast.success("Logged out successfully!");
   };
 
@@ -74,13 +78,21 @@ const Tasks = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Loading Indicator */}
+        {loading && (
+          <div className="flex justify-center items-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-navy-500"></div>
+            <span className="ml-3 text-white">Loading tasks...</span>
+          </div>
+        )}
+
         {/* Task Form */}
         {showForm && (
           <TaskForm editingTask={editingTask} onCancel={handleCancelEdit} />
         )}
 
         {/* Task List */}
-        <TaskList onEditTask={handleEditTask} />
+        {!loading && <TaskList onEditTask={handleEditTask} />}
       </main>
     </div>
   );

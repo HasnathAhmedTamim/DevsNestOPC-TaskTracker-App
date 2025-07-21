@@ -2,20 +2,82 @@ import React from 'react';
 import { useDispatch } from 'react-redux';
 import { deleteTask, toggleTaskStatus } from '../redux/taskSlice';
 import toast from 'react-hot-toast';
+import Swal from 'sweetalert2';
 
 const TaskItem = ({ task, onEdit }) => {
   const dispatch = useDispatch();
 
-  const handleDelete = () => {
-    if (window.confirm('Are you sure you want to delete this task?')) {
-      dispatch(deleteTask(task.id));
-      toast.success('Task deleted successfully!');
+  const handleDelete = async () => {
+    try {
+      const result = await Swal.fire({
+        title: 'Delete Task?',
+        text: `Are you sure you want to delete "${task.title}"? This action cannot be undone.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Yes, delete it!',
+        cancelButtonText: 'Cancel'
+      });
+
+      if (result.isConfirmed) {
+        try {
+          await dispatch(deleteTask(task._id)).unwrap();
+          Swal.fire({
+            title: 'Deleted!',
+            text: 'Task has been deleted successfully.',
+            icon: 'success',
+            timer: 2000,
+            showConfirmButton: false
+          });
+          toast.success('Task deleted successfully!');
+        } catch (error) {
+          Swal.fire({
+            title: 'Error!',
+            text: 'Failed to delete task: ' + error.message,
+            icon: 'error',
+            confirmButtonColor: '#dc2626'
+          });
+          toast.error('Failed to delete task: ' + error.message);
+        }
+      }
+    } catch (alertError) {
+      // Fallback to basic confirm if SweetAlert fails
+      console.error('SweetAlert error:', alertError);
+      if (window.confirm(`Are you sure you want to delete "${task.title}"?`)) {
+        try {
+          await dispatch(deleteTask(task._id)).unwrap();
+          toast.success('Task deleted successfully!');
+        } catch (error) {
+          toast.error('Failed to delete task: ' + error.message);
+        }
+      }
     }
   };
 
-  const handleToggleStatus = () => {
-    dispatch(toggleTaskStatus(task.id));
-    toast.success(`Task marked as ${task.status === 'Completed' ? 'Pending' : 'Completed'}!`);
+  const handleToggleStatus = async () => {
+    try {
+      await dispatch(toggleTaskStatus({ id: task._id, currentTask: task })).unwrap();
+      const newStatus = task.status === 'Completed' ? 'Pending' : 'Completed';
+      
+      Swal.fire({
+        title: 'Status Updated!',
+        text: `Task "${task.title}" has been marked as ${newStatus}.`,
+        icon: 'success',
+        timer: 1500,
+        showConfirmButton: false
+      });
+      
+      toast.success(`Task marked as ${newStatus}!`);
+    } catch (error) {
+      Swal.fire({
+        title: 'Error!',
+        text: 'Failed to update task status: ' + error.message,
+        icon: 'error',
+        confirmButtonColor: '#dc2626'
+      });
+      toast.error('Failed to update task status: ' + error.message);
+    }
   };
 
   const getPriorityColor = (priority) => {

@@ -1,9 +1,69 @@
-import { createSlice } from '@reduxjs/toolkit';
-import { getTasks, saveTasks } from '../utils/localStorage';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { apiService } from '../services/api';
+
+// Async thunks for API calls
+export const fetchTasks = createAsyncThunk(
+  'tasks/fetchTasks',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await apiService.tasks.getAll();
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch tasks');
+    }
+  }
+);
+
+export const createTask = createAsyncThunk(
+  'tasks/createTask',
+  async (taskData, { rejectWithValue }) => {
+    try {
+      const response = await apiService.tasks.create(taskData);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to create task');
+    }
+  }
+);
+
+export const updateTask = createAsyncThunk(
+  'tasks/updateTask',
+  async ({ id, ...taskData }, { rejectWithValue }) => {
+    try {
+      const response = await apiService.tasks.update(id, taskData);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update task');
+    }
+  }
+);
+
+export const deleteTask = createAsyncThunk(
+  'tasks/deleteTask',
+  async (id, { rejectWithValue }) => {
+    try {
+      await apiService.tasks.delete(id);
+      return id;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to delete task');
+    }
+  }
+);
+
+export const toggleTaskStatus = createAsyncThunk(
+  'tasks/toggleTaskStatus',
+  async ({ id, currentTask }, { rejectWithValue }) => {
+    try {
+      const response = await apiService.tasks.toggleStatus(id, currentTask);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to toggle task status');
+    }
+  }
+);
 
 const initialState = {
   tasks: [],
-  currentUserEmail: null,
   loading: false,
   error: null,
 };
@@ -12,72 +72,85 @@ const taskSlice = createSlice({
   name: 'tasks',
   initialState,
   reducers: {
-    loadTasksForUser: (state, action) => {
-      const userEmail = action.payload;
-      state.currentUserEmail = userEmail;
-      state.tasks = getTasks(userEmail);
-    },
-    
-    addTask: (state, action) => {
-      const newTask = {
-        id: Date.now().toString(),
-        title: action.payload.title,
-        description: action.payload.description,
-        dueDate: action.payload.dueDate,
-        status: action.payload.status || 'Pending',
-        priority: action.payload.priority || 'Medium',
-        createdAt: new Date().toISOString(),
-      };
-      state.tasks.push(newTask);
-      saveTasks(state.tasks, state.currentUserEmail);
-    },
-    
-    updateTask: (state, action) => {
-      const { id, ...updates } = action.payload;
-      const taskIndex = state.tasks.findIndex(task => task.id === id);
-      if (taskIndex !== -1) {
-        state.tasks[taskIndex] = { ...state.tasks[taskIndex], ...updates };
-        saveTasks(state.tasks, state.currentUserEmail);
-      }
-    },
-    
-    deleteTask: (state, action) => {
-      state.tasks = state.tasks.filter(task => task.id !== action.payload);
-      saveTasks(state.tasks, state.currentUserEmail);
-    },
-    
-    toggleTaskStatus: (state, action) => {
-      const task = state.tasks.find(task => task.id === action.payload);
-      if (task) {
-        task.status = task.status === 'Completed' ? 'Pending' : 'Completed';
-        saveTasks(state.tasks, state.currentUserEmail);
-      }
-    },
-    
     clearTasks: (state) => {
       state.tasks = [];
-      state.currentUserEmail = null;
     },
-    
-    setLoading: (state, action) => {
-      state.loading = action.payload;
+    clearError: (state) => {
+      state.error = null;
     },
-    
-    setError: (state, action) => {
-      state.error = action.payload;
-    },
+  },
+  extraReducers: (builder) => {
+    builder
+      // Fetch tasks
+      .addCase(fetchTasks.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchTasks.fulfilled, (state, action) => {
+        state.loading = false;
+        state.tasks = action.payload;
+      })
+      .addCase(fetchTasks.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Create task
+      .addCase(createTask.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(createTask.fulfilled, (state, action) => {
+        state.loading = false;
+        state.tasks.push(action.payload);
+      })
+      .addCase(createTask.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Update task
+      .addCase(updateTask.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateTask.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.tasks.findIndex(task => task._id === action.payload._id);
+        if (index !== -1) {
+          state.tasks[index] = action.payload;
+        }
+      })
+      .addCase(updateTask.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Delete task
+      .addCase(deleteTask.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deleteTask.fulfilled, (state, action) => {
+        state.loading = false;
+        state.tasks = state.tasks.filter(task => task._id !== action.payload);
+      })
+      .addCase(deleteTask.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Toggle task status
+      .addCase(toggleTaskStatus.pending, (state) => {
+        state.error = null;
+      })
+      .addCase(toggleTaskStatus.fulfilled, (state, action) => {
+        const index = state.tasks.findIndex(task => task._id === action.payload._id);
+        if (index !== -1) {
+          state.tasks[index] = action.payload;
+        }
+      })
+      .addCase(toggleTaskStatus.rejected, (state, action) => {
+        state.error = action.payload;
+      });
   },
 });
 
-export const {
-  loadTasksForUser,
-  addTask,
-  updateTask,
-  deleteTask,
-  toggleTaskStatus,
-  clearTasks,
-  setLoading,
-  setError,
-} = taskSlice.actions;
-
+export const { clearTasks, clearError } = taskSlice.actions;
 export default taskSlice.reducer;

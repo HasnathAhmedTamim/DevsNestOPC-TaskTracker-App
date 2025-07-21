@@ -1,0 +1,19 @@
+{
+  "name": "task-tracker-fullstack",
+  "version": "1.0.0",
+  "description": "Full-stack Task Tracker with React frontend and Node.js backend",
+  "scripts": {
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
+    "backend": "cd backend && npm run dev",
+    "frontend": "npm run dev",
+    "start": "cd backend && npm start",
+    "install-backend": "cd backend && npm install",
+    "install-all": "npm install && npm run install-backend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": ["react", "nodejs", "express", "mongodb", "fullstack"],
+  "author": "",
+  "license": "ISC"
+}

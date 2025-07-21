@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
-import { addTask, updateTask } from '../redux/taskSlice';
+import { createTask, updateTask } from '../redux/taskSlice';
 import toast from 'react-hot-toast';
 
 const TaskForm = ({ editingTask, onCancel }) => {
@@ -33,7 +33,7 @@ const TaskForm = ({ editingTask, onCancel }) => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!formData.title.trim()) {
@@ -41,20 +41,24 @@ const TaskForm = ({ editingTask, onCancel }) => {
       return;
     }
 
-    if (editingTask) {
-      dispatch(updateTask({ id: editingTask.id, ...formData }));
-      toast.success('Task updated successfully!');
-      onCancel();
-    } else {
-      dispatch(addTask(formData));
-      toast.success('Task added successfully!');
-      setFormData({
-        title: '',
-        description: '',
-        dueDate: '',
-        status: 'Pending',
-        priority: 'Medium',
-      });
+    try {
+      if (editingTask) {
+        await dispatch(updateTask({ id: editingTask._id, ...formData })).unwrap();
+        toast.success('Task updated successfully!');
+        onCancel();
+      } else {
+        await dispatch(createTask(formData)).unwrap();
+        toast.success('Task added successfully!');
+        setFormData({
+          title: '',
+          description: '',
+          dueDate: '',
+          status: 'Pending',
+          priority: 'Medium',
+        });
+      }
+    } catch (error) {
+      toast.error(error || 'Failed to save task');
     }
   };
 
